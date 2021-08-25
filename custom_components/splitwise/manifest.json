@@ -1,0 +1,10 @@
+{
+    "domain": "splitwise",
+    "name": "Splitwise",
+    "documentation": "https://github.com/home-assistant/example-custom-config/tree/master/custom_components/example_light/",
+    "dependencies": [],
+    "codeowners": [],
+    "requirements": ["splitwise==2.2.0"],
+    "iot_class": "cloud_polling",
+    "version": "0.0.1"
+  }

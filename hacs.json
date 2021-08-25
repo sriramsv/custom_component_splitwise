@@ -1,0 +1,5 @@
+{
+    "name": "Splitwise Sensor",
+    "domains": ["sensor"],
+    "country": ["US"]
+  }
