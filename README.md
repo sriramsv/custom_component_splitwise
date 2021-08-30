@@ -47,5 +47,6 @@ sensor:
 ```
 
 - Restart Homeassistant 
-- Once you login to Homeassistant again, you should see a persistent notification with an authorization URL link in it: ![auth-url](images/auth-url.png)
+- Once you login to Homeassistant again, you should see a persistent notification with an authorization URL link in it: 
+ ![auth-url](images/auth-url.png)
 - 
