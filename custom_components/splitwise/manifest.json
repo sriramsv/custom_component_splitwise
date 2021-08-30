@@ -6,5 +6,5 @@
     "codeowners": [@sriramsv],
     "requirements": ["splitwise==2.2.0"],
     "iot_class": "cloud_polling",
-    "version": "0.1.0"
+    "version": "0.1.1"
   }
