@@ -214,6 +214,7 @@ class SplitwiseSensor(Entity):
             }
             self._id_map[id] = name
             all_balance += total_balance
+            self._state = all_balance
 
     def create_oauth_view(self, auth_url):
         try:

@@ -1,5 +1,6 @@
 {
     "name": "Splitwise Sensor",
     "domains": ["sensor"],
-    "country": ["US"]
+    "country": ["US"],
+    "version": "0.0.1"
   }
