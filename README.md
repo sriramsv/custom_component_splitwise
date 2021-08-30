@@ -2,7 +2,7 @@
 
 This is a custom component integration for Splitwise API
 
-## Installation
+
 
 ### Splitwise Setup
 - Login into https://secure.splitwise.com and login into your account
@@ -34,11 +34,19 @@ If you are using a reverse proxy in front of your home assistant server, use the
 - Click on `Register and get API key`
 - Copy the `Consumer Key` and `Consumer Secret` values and store it some place safe
 
-### Local Setup:
+
+## Installation
+
+### HACS:
+- Search for `Splitwise Sensor` in HACS console and install it.
+
+### Manual
 - Copy the contents of the folder `custom_components/splitwise` into `<hass-config-directory>/custom_components/splitwise`
 
 - Add the following lines to the `configuration.yaml` 
 
+
+## Configuration
 ```yaml
 sensor:
   - platform: splitwise
@@ -48,5 +56,14 @@ sensor:
 
 - Restart Homeassistant 
 - Once you login to Homeassistant again, you should see a persistent notification with an authorization URL link in it: 
+
+
  ![auth-url](images/auth-url.png)
-- 
+
+ - You will be redirected to the Oauth confirmation page from Splitwise to authorize Homeassistant to pull the data on your behalf. 
+
+ ![oauth-confirm](images/oauth.png)
+- Once you accept the Splitwise Oauth Callback, then sensor pulls the data from Splitwise API
+
+## Final Output
+![dash-url](images/dash.png)
