@@ -1,1 +1,1 @@
-"""Example Load Platform integration."""
+""" Splitwise Sensor Custom Component"""
