@@ -198,11 +198,11 @@ class SplitwiseSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
         self.api.get_access_token_from_file()
+        if not self.api.is_authenticated:
+            raise AuthenticationFailedException("error fetching authentication token")
         self.hass.components.persistent_notification.dismiss(
             notification_id=f"splitwise_setup_{SENSOR_NAME}"
         )
-        if not self.api.is_authenticated:
-            raise AuthenticationFailedException("error fetching authentication token")
         user = self.api.splitwise.getCurrentUser()
         self._user_id = user.getId()
         self.currency = user.getDefaultCurrency()
