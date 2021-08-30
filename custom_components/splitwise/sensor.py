@@ -23,10 +23,15 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 DATA_CALLBACK = "splitwise-callback"
 AUTH_CALLBACK_PATH = "/api/splitwise/callback"
+SENSOR_NAME = "Splitwise"
 
 
 class AuthenticationFailedException(Exception):
     pass
+
+
+def format_name(str):
+    return str.lower().replace(" ", "_").strip("_").replace("'", "_").replace("-", "_")
 
 
 def get_url(hass):
@@ -129,7 +134,6 @@ class SplitwiseApi:
 
     def get_credentials(self):
         url, state = self.splitwise.getOAuth2AuthorizeURL(self.get_redirect_uri())
-        _LOGGER.debug(url)
         self.sensor.create_oauth_view(url)
 
     def get_redirect_uri(self):
@@ -141,7 +145,6 @@ class SplitwiseSensor(Entity):
         """Initialize the sensor."""
         self.hass = hass
         self.hass_url = get_url(hass)
-        _LOGGER.debug(self.hass_url)
         self.api = SplitwiseApi(self, client_id, client_secret)
         self._state = None
         self._user_id = None
@@ -173,16 +176,20 @@ class SplitwiseSensor(Entity):
         m = {}
         if self._user_id:
             m["id"] = self._user_id
-        if len(self._friends_list) > 0:
-            for k, v in self._friends_list.items():
-                m["friend_{}".format(k)] = v["total_balance"]
         if self._first_name:
             m["first_name"] = self._first_name
         if self._last_name:
             m["last_name"] = self._last_name
+
+        if len(self._friends_list) > 0:
+            for k, v in self._friends_list.items():
+                if v["total_balance"] != 0.0:
+                    m[format_name(k)] = v["total_balance"]
+
         if len(self._group_map) > 0:
             for k, v in self._group_map.items():
-                m["group_{}".format(k)] = v
+                if v != 0.0:
+                    m[format_name(k)] = v
         return m
 
     def update(self):
@@ -191,6 +198,9 @@ class SplitwiseSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
         self.api.get_access_token_from_file()
+        self.hass.components.persistent_notification.dismiss(
+            notification_id=f"splitwise_setup_{SENSOR_NAME}"
+        )
         if not self.api.is_authenticated:
             raise AuthenticationFailedException("error fetching authentication token")
         user = self.api.splitwise.getCurrentUser()
@@ -201,6 +211,7 @@ class SplitwiseSensor(Entity):
         self._last_name = user.getLastName().title().lower()
         friends = self.api.splitwise.getFriends()
         all_balance = 0.0
+
         for f in friends:
             name = f.getFirstName().title().lower()
             id = f.getId()
@@ -215,6 +226,18 @@ class SplitwiseSensor(Entity):
             self._id_map[id] = name
             all_balance += total_balance
             self._state = all_balance
+        self.get_group_data()
+
+    def get_group_data(self):
+        groups = self.api.splitwise.getGroups()
+        for g in groups:
+            amount = 0.0
+            for d in g.getOriginalDebts():
+                if self._id_map[d.getToUser()] == self._first_name:
+                    amount -= float(d.getAmount())
+                elif self._id_map[d.getFromUser()] == self._first_name:
+                    amount += float(d.getAmount())
+            self._group_map[g.getName()] = amount
 
     def create_oauth_view(self, auth_url):
         try:
@@ -225,7 +248,15 @@ class SplitwiseSensor(Entity):
             _LOGGER.error("Splitwise CallbackView Error {}".format(e))
             return
 
-        self.hass.components.persistent_notification.create(auth_url, DOMAIN, "foo")
+        self.hass.components.persistent_notification.create(
+            "In order to authorize Home-Assistant to view your Splitwise data, "
+            "you must visit: "
+            f'<a href="{auth_url}" target="_blank">{auth_url}</a>. Make '
+            f"sure that you have added {self.api.redirect_uri} to your "
+            "Redirect URIs on Splitwise Developer portal.",
+            title=SENSOR_NAME,
+            notification_id=f"splitwise_setup_{SENSOR_NAME}",
+        )
 
 
 class SplitwiseAuthCallbackView(http.HomeAssistantView):
