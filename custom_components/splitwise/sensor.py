@@ -1,6 +1,5 @@
 """Platform for sensor integration."""
 
-from homeassistant.const import CURRENCY_DOLLAR
 from homeassistant.helpers.entity import Entity
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components import http
@@ -8,11 +7,11 @@ from homeassistant.helpers import network
 from homeassistant.core import callback
 import voluptuous as vol
 from .const import DOMAIN
-from aiohttp import web
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import CONF_CLIENT_SECRET, CONF_CLIENT_ID
 from splitwise import Splitwise
 import logging, os, json
+from homeassistant.helpers import network
 
 _TOKEN_FILE = "splitwise.conf"
 _LOGGER = logging.getLogger(__name__)
@@ -24,7 +23,37 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 DATA_CALLBACK = "splitwise-callback"
 AUTH_CALLBACK_PATH = "/api/splitwise/callback"
-REDIRECT_URI = "http://localhost:8123" + AUTH_CALLBACK_PATH
+
+
+class AuthenticationFailedException(Exception):
+    pass
+
+
+def get_url(hass):
+    """Gets the required Home-Assistant URL for validation.
+    Args:
+      hass: Hass instance.
+    Returns:
+      Home-Assistant URL.
+    """
+    if network:
+        try:
+            return network.get_url(
+                hass,
+                allow_external=True,
+                allow_internal=True,
+                allow_ip=False,
+                prefer_external=True,
+                require_ssl=True,
+            )
+        except network.NoURLAvailableError:
+            _LOGGER.debug("Hass version does not have get_url helper, using fall back.")
+
+    base_url = hass.config.api.base_url
+    if base_url:
+        return base_url
+
+    raise ValueError("Unable to obtain HASS url.")
 
 
 def setup(hass, config):
@@ -46,6 +75,7 @@ class SplitwiseApi:
     def __init__(self, sensor, client_id, client_secret):
         self.sensor = sensor
         self.secret = None
+        self.isAuthSuccess = False
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = None
@@ -72,35 +102,46 @@ class SplitwiseApi:
         with open(self.token_file_name, "r") as token_file:
             token_data = json.loads(token_file.read()) or {}
 
-        access_token = token_data.get("access_token")
-        if not access_token:
+        if "access_token" not in token_data:
             code = token_data.get("code")
             if code:
                 self.get_access_token(code)
         else:
-            self.splitwise.setOAuth2AccessToken(access_token)
+            self.isAuthSuccess = True
+            self.splitwise.setOAuth2AccessToken(token_data)
+
+    @property
+    def is_authenticated(self):
+        return self.isAuthSuccess
 
     def get_access_token(self, code):
         with open(self.token_file_name, "r+") as token_file:
             token_data = json.loads(token_file.read()) or {}
         access_token = token_data.get("access_token")
         if not access_token:
-            access_token = self.splitwise.getOAuth2AccessToken(code, REDIRECT_URI)
-        _LOGGER.debug("Access_token:{}".format(access_token))
+            access_token = self.splitwise.getOAuth2AccessToken(
+                code, self.get_redirect_uri()
+            )
         with open(self.token_file_name, "w+") as token_file:
-            token_file.write(json.dumps({"access_token": access_token}))
-        self.splitwise.setAccessToken(access_token)
+            token_file.write(json.dumps(access_token))
+        self.isAuthSuccess = True
+        self.splitwise.setOAuth2AccessToken(access_token)
 
     def get_credentials(self):
-        url, state = self.splitwise.getOAuth2AuthorizeURL(REDIRECT_URI)
+        url, state = self.splitwise.getOAuth2AuthorizeURL(self.get_redirect_uri())
         _LOGGER.debug(url)
         self.sensor.create_oauth_view(url)
+
+    def get_redirect_uri(self):
+        return "{}{}".format(self.sensor.hass_url, AUTH_CALLBACK_PATH)
 
 
 class SplitwiseSensor(Entity):
     def __init__(self, hass, client_id, client_secret):
         """Initialize the sensor."""
         self.hass = hass
+        self.hass_url = get_url(hass)
+        _LOGGER.debug(self.hass_url)
         self.api = SplitwiseApi(self, client_id, client_secret)
         self._state = None
         self._user_id = None
@@ -150,6 +191,8 @@ class SplitwiseSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
         self.api.get_access_token_from_file()
+        if not self.api.is_authenticated:
+            raise AuthenticationFailedException("error fetching authentication token")
         user = self.api.splitwise.getCurrentUser()
         self._user_id = user.getId()
         self.currency = user.getDefaultCurrency()
@@ -171,29 +214,6 @@ class SplitwiseSensor(Entity):
             }
             self._id_map[id] = name
             all_balance += total_balance
-
-        groups = self.api.splitwise.getGroups()
-        groupMap = {}
-        for g in groups:
-            groupDebts = 0.0
-            groupName = (
-                g.getName()
-                .lower()
-                .replace(" ", "_", -1)
-                .strip("_")
-                .replace("'", "_", -1)
-            )
-            debts = g.getOriginalDebts()
-            for d in debts:
-                amount = d.getAmount()
-                trans = "{}->{}".format(
-                    self._id_map.get(d.getFromUser()), self._id_map.get(d.getToUser())
-                )
-                _LOGGER.debug(trans)
-                groupDebts += float(amount)
-            groupMap[groupName] = groupDebts
-        self._state = all_balance
-        self._group_map = groupMap
 
     def create_oauth_view(self, auth_url):
         try:

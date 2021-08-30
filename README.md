@@ -7,16 +7,28 @@ This is a custom component integration for Splitwise API
 ### Splitwise Setup
 - Login into https://secure.splitwise.com and login into your account
 - Click on your `profile` and select `Your Account` 
+
+
 ![Account](images/account.png)
 
-- In the `Your Account` section, select `Your Apps` under the `Privacy and Security` section ![Profile](images/profile.png)
+- In the `Your Account` section, select `Your Apps` under the `Privacy and Security` section 
 
-- Under the build your own app, click on `Register your Application` ![Register](images/register.png)
+![Profile](images/profile.png)
+
+- Under the build your own app, click on `Register your Application` 
+
+![Register](images/register.png)
+
+
 - Fill in the following sections
   - Application name: Homeassistant
   - Application Description: Homeassistant API Integration
   - Homepage URL: `http://localhost:8123` 
   - [Important] Callback URL: `http://localhost:8123/api/splitwise/callback` 
+
+#### Note: 
+
+If you are using a reverse proxy in front of your home assistant server, use the public address (`https://home.<your-domain>.com>/api/splitwise/callback`) as the callback URL in the application settings. Otherwise the oauth authentication won't work
 
 ![edit-app](images/edit-app.png)
 - Click on `Register and get API key`
@@ -34,4 +46,6 @@ sensor:
     client_secret: '<consumer-secret>'
 ```
 
-- Restart Homeassistant and you should see the splitwise sensor show up
+- Restart Homeassistant 
+- Once you login to Homeassistant again, you should see a persistent notification with an authorization URL link in it: ![auth-url](images/auth-url.png)
+- 
