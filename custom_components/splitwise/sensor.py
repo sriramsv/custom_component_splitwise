@@ -227,6 +227,20 @@ class SplitwiseSensor(Entity):
             all_balance += total_balance
             self._state = all_balance
         self.get_group_data()
+        self.emit_notifications(self.api.splitwise.getNotifications())
+
+    def emit_notifications(self, notifications):
+        for n in notifications:
+            self.hass.bus.fire("splitwise_notification_event_" + n.getType(), {
+                id: n.getId()
+                type: n.getType(),
+                image_url: n.getImageUrl(),
+                content: n.getContent(),
+                image_shape: n.getImageShape(),
+                created_at: n.getCreatedAt(),
+                created_by: n.getCreatedBy(),
+                source: { id: n.source.getId(), type: n.source.getType(), url: n.source.getUrl() }
+            }, origin="REMOTE", time_fired=n.getCreatedAt())
 
     def get_group_data(self):
         groups = self.api.splitwise.getGroups()
