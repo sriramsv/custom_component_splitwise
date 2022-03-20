@@ -240,7 +240,7 @@ class SplitwiseSensor(Entity):
                 created_at: n.getCreatedAt(),
                 created_by: n.getCreatedBy(),
                 source: { id: n.source.getId(), type: n.source.getType(), url: n.source.getUrl() }
-            }, "REMOTE", time_fired=n.getCreatedAt())
+            }, origin="REMOTE", time_fired=n.getCreatedAt())
 
     def get_group_data(self):
         groups = self.api.splitwise.getGroups()
