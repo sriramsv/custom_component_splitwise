@@ -231,7 +231,7 @@ class SplitwiseSensor(Entity):
 
     def emit_notifications(self, notifications):
         for n in notifications:
-            self.hass.bus.fire("splitwise_notification_event_" + n.getType(), {
+            self.hass.bus.fire("splitwise_notification_event_" + str(n.getType()), {
                 id: n.getId(),
                 type: n.getType(),
                 image_url: n.getImageUrl(),
