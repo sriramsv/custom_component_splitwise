@@ -232,15 +232,15 @@ class SplitwiseSensor(Entity):
     def emit_notifications(self, notifications):
         for n in notifications:
             self.hass.bus.fire("splitwise_notification_event_" + str(n.getType()), {
-                id: n.getId(),
-                type: n.getType(),
-                image_url: n.getImageUrl(),
-                content: n.getContent(),
-                image_shape: n.getImageShape(),
-                created_at: n.getCreatedAt(),
-                created_by: n.getCreatedBy(),
-                source: { id: n.source.getId(), type: n.source.getType(), url: n.source.getUrl() }
-            }, origin="REMOTE", time_fired=n.getCreatedAt())
+                "id": n.getId(),
+                "type": n.getType(),
+                "image_url": n.getImageUrl(),
+                "content": n.getContent(),
+                "image_shape": n.getImageShape(),
+                "created_at": n.getCreatedAt(),
+                "created_by": n.getCreatedBy(),
+                "source": { "id": n.source.getId(), "type": n.source.getType(), "url": n.source.getUrl() }
+            }, origin="REMOTE")
 
     def get_group_data(self):
         groups = self.api.splitwise.getGroups()
