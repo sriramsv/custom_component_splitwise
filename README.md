@@ -67,3 +67,11 @@ sensor:
 
 ## Final Output
 ![dash-url](images/dash.png)
+
+# Advanced usage - events
+
+This component will fire events:
+
+![image](https://user-images.githubusercontent.com/365751/205475209-30e938f0-e1d2-4067-ae36-bbefba85ba18.png)
+
+The event types are defined in the [API documentation](https://dev.splitwise.com/#tag/notifications)
