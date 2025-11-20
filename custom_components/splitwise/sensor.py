@@ -159,6 +159,10 @@ class SplitwiseSensor(Entity):
         return "Splitwise Sensor"
 
     @property
+    def icon(self):
+        return "mdi:cash"  # <<< This sets the icon
+
+    @property
     def state(self):
         return self._state
 
