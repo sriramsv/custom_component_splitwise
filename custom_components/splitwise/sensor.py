@@ -111,7 +111,15 @@ class SplitwiseSensor(SensorEntity):
         user = client.getCurrentUser()
         friends = client.getFriends()
         groups = client.getGroups()
-        notifications = client.getNotifications()
+
+        try:
+            notifications = client.getNotifications()
+        except Exception as err:  # noqa: BLE001 - the splitwise library can raise
+            # non-SplitwiseException errors (e.g. KeyError) when a notification's
+            # data is missing fields it assumes are always present. Don't let a
+            # malformed notification take down the whole sensor update.
+            _LOGGER.warning("Failed to fetch Splitwise notifications: %s", err)
+            notifications = []
 
         return user, friends, groups, notifications
 
