@@ -1,5 +1,7 @@
 # Custom component for HomeAssistant for Splitwise API
 
+<img src="images/icon.png" alt="Splitwise" width="96" height="96">
+
 This is a custom component integration for Splitwise API
 
 
