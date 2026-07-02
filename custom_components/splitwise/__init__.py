@@ -8,7 +8,11 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PLATFORM, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
+from homeassistant.helpers import (
+    config_entry_oauth2_flow,
+    entity_registry as er,
+    issue_registry as ir,
+)
 from homeassistant.helpers.typing import ConfigType
 from splitwise import Splitwise
 
@@ -42,6 +46,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Splitwise from a config entry."""
+    _async_remove_stale_entities(hass, entry)
+
     implementation = (
         await config_entry_oauth2_flow.async_get_config_entry_implementation(
             hass, entry
@@ -62,6 +68,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+def _async_remove_stale_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove entities from unique_ids no longer created by this integration.
+
+    0.3.0 replaced the single "Balance" sensor (unique_id "<entry_id>_balance")
+    with separate "You Owe"/"You Are Owed" sensors. Home Assistant doesn't
+    remove entities an integration stops creating on its own, so anyone
+    upgrading would otherwise be left with a permanently-unavailable orphan.
+    """
+    ent_reg = er.async_get(hass)
+    stale_unique_id = f"{entry.entry_id}_balance"
+    if entity_id := ent_reg.async_get_entity_id(
+        Platform.SENSOR, DOMAIN, stale_unique_id
+    ):
+        ent_reg.async_remove(entity_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
