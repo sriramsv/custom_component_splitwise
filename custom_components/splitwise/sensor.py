@@ -23,16 +23,6 @@ SENSOR_NAME = "Splitwise"
 SCAN_INTERVAL = timedelta(minutes=30)
 
 
-def format_name(str):
-    return (
-        str.lower()
-        .replace(" ", "_")
-        .strip("_")
-        .replace("'", "_")
-        .replace("-", "_")
-    )
-
-
 def _sum_by_currency(amounts):
     """Sum a list of (currency_code, amount) pairs, keyed by currency."""
     totals: dict[str, float] = {}
@@ -107,8 +97,6 @@ class SplitwiseSensor(SensorEntity):
         for k, v in self._friends_list.items():
             balance = v["total_balance"]
 
-            if balance != 0.0:
-                m[format_name(k)] = balance
             if balance < 0:
                 you_owe += -balance
             elif balance > 0:
@@ -119,11 +107,9 @@ class SplitwiseSensor(SensorEntity):
                 for currency_code, amount in v["balances_by_currency"].items()
                 if currency_code != self.currency and amount != 0.0
             }
-            if other_currencies:
-                m[f"{format_name(k)}_other_currencies"] = other_currencies
 
             if balance != 0.0 or other_currencies:
-                friend_entry = {"name": k, "id": v["id"], "balance": balance}
+                friend_entry = {"name": k.strip(), "id": v["id"], "balance": balance}
                 if other_currencies:
                     friend_entry["other_currencies"] = other_currencies
                 friends.append(friend_entry)
@@ -133,19 +119,14 @@ class SplitwiseSensor(SensorEntity):
         for k, v in self._group_map.items():
             balance = v["total_balance"]
 
-            if balance != 0.0:
-                m[format_name(k)] = balance
-
             other_currencies = {
                 currency_code: amount
                 for currency_code, amount in v["balances_by_currency"].items()
                 if currency_code != self.currency and amount != 0.0
             }
-            if other_currencies:
-                m[f"{format_name(k)}_other_currencies"] = other_currencies
 
             if balance != 0.0 or other_currencies:
-                group_entry = {"name": k, "balance": balance}
+                group_entry = {"name": k.strip(), "balance": balance}
                 if other_currencies:
                     group_entry["other_currencies"] = other_currencies
                 groups.append(group_entry)
