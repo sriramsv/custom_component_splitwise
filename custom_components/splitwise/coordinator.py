@@ -70,6 +70,12 @@ class SplitwiseDataUpdateCoordinator(DataUpdateCoordinator[SplitwiseData]):
         self.entry = entry
         self.session = session
         self.client = client
+        # The splitwise library's getNotifications() ignores its own
+        # updated_since/limit params (unimplemented upstream), so every poll
+        # re-fetches the same "recent notifications" window. Track which ids
+        # we've already fired events for so we don't re-fire the same
+        # notification every SCAN_INTERVAL for as long as it stays recent.
+        self._seen_notification_ids: set[int] = set()
 
     def _fetch_splitwise_data(self, token):
         """Run on the executor: sync the token into the client and fetch data."""
@@ -190,7 +196,12 @@ class SplitwiseDataUpdateCoordinator(DataUpdateCoordinator[SplitwiseData]):
         )
 
     def _emit_notifications(self, notifications):
-        for n in notifications:
+        current_ids = {n.getId() for n in notifications}
+        new_notifications = [
+            n for n in notifications if n.getId() not in self._seen_notification_ids
+        ]
+
+        for n in new_notifications:
             self.hass.bus.fire(
                 "splitwise_notification_event_" + str(n.getType()),
                 {
@@ -209,3 +220,5 @@ class SplitwiseDataUpdateCoordinator(DataUpdateCoordinator[SplitwiseData]):
                 },
                 origin="REMOTE",
             )
+
+        self._seen_notification_ids = current_ids
