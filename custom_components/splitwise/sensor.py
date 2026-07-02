@@ -52,6 +52,9 @@ async def async_setup_entry(
 
 
 class SplitwiseSensor(SensorEntity):
+    _attr_has_entity_name = True
+    _attr_name = "Balance"
+
     def __init__(self, runtime_data: SplitwiseRuntimeData, entry: ConfigEntry) -> None:
         self._runtime = runtime_data
         self._entry = entry
@@ -73,10 +76,6 @@ class SplitwiseSensor(SensorEntity):
         self._friends_list = {}
         self._group_map = {}
         self._id_map = {}
-
-    @property
-    def name(self):
-        return "Splitwise Sensor"
 
     @property
     def icon(self):
@@ -101,9 +100,19 @@ class SplitwiseSensor(SensorEntity):
         if self._last_name:
             m["last_name"] = self._last_name
 
+        you_owe = 0.0
+        you_are_owed = 0.0
+        friends = []
+
         for k, v in self._friends_list.items():
-            if v["total_balance"] != 0.0:
-                m[format_name(k)] = v["total_balance"]
+            balance = v["total_balance"]
+
+            if balance != 0.0:
+                m[format_name(k)] = balance
+            if balance < 0:
+                you_owe += -balance
+            elif balance > 0:
+                you_are_owed += balance
 
             other_currencies = {
                 currency_code: amount
@@ -112,10 +121,20 @@ class SplitwiseSensor(SensorEntity):
             }
             if other_currencies:
                 m[f"{format_name(k)}_other_currencies"] = other_currencies
+
+            if balance != 0.0 or other_currencies:
+                friend_entry = {"name": k, "id": v["id"], "balance": balance}
+                if other_currencies:
+                    friend_entry["other_currencies"] = other_currencies
+                friends.append(friend_entry)
+
+        groups = []
 
         for k, v in self._group_map.items():
-            if v["total_balance"] != 0.0:
-                m[format_name(k)] = v["total_balance"]
+            balance = v["total_balance"]
+
+            if balance != 0.0:
+                m[format_name(k)] = balance
 
             other_currencies = {
                 currency_code: amount
@@ -124,6 +143,17 @@ class SplitwiseSensor(SensorEntity):
             }
             if other_currencies:
                 m[f"{format_name(k)}_other_currencies"] = other_currencies
+
+            if balance != 0.0 or other_currencies:
+                group_entry = {"name": k, "balance": balance}
+                if other_currencies:
+                    group_entry["other_currencies"] = other_currencies
+                groups.append(group_entry)
+
+        m["you_owe"] = you_owe
+        m["you_are_owed"] = you_are_owed
+        m["friends"] = friends
+        m["groups"] = groups
 
         return m
 
