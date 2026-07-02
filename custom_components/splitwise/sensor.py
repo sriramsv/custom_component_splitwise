@@ -1,33 +1,26 @@
 """Platform for sensor integration."""
 
-from homeassistant.helpers.entity import Entity
-import homeassistant.helpers.config_validation as cv
-from homeassistant.components import http, persistent_notification
-from homeassistant.helpers import network
-import voluptuous as vol
-from .const import DOMAIN
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import CONF_CLIENT_SECRET, CONF_CLIENT_ID
-from splitwise import Splitwise
-import logging, os, json
+from __future__ import annotations
 
-_TOKEN_FILE = "splitwise.conf"
+import logging
+from datetime import timedelta
+
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.device_registry import DeviceEntryType
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from splitwise.exception import SplitwiseException
+
+from . import SplitwiseRuntimeData
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_CLIENT_ID): cv.string,
-        vol.Required(CONF_CLIENT_SECRET): cv.string,
-    }
-)
-
-DATA_CALLBACK = "splitwise-callback"
-AUTH_CALLBACK_PATH = "/api/splitwise/callback"
 SENSOR_NAME = "Splitwise"
-
-
-class AuthenticationFailedException(Exception):
-    pass
+SCAN_INTERVAL = timedelta(minutes=30)
 
 
 def format_name(str):
@@ -40,118 +33,28 @@ def format_name(str):
     )
 
 
-def get_url(hass):
-    """Gets the required Home-Assistant URL for validation.
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the Splitwise sensor from a config entry."""
+    runtime_data: SplitwiseRuntimeData = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([SplitwiseSensor(runtime_data, entry)], update_before_add=True)
 
-    Prefers the external URL (e.g. Nabu Casa or a reverse proxy) since that is
-    the address Splitwise's OAuth redirect must match. Falls back to the
-    internal URL for local-only setups.
-    """
-    try:
-        return network.get_url(
-            hass,
-            allow_internal=True,
-            allow_external=True,
-            allow_ip=True,
-            prefer_external=True,
-            require_ssl=False,
+
+class SplitwiseSensor(SensorEntity):
+    def __init__(self, runtime_data: SplitwiseRuntimeData, entry: ConfigEntry) -> None:
+        self._runtime = runtime_data
+        self._entry = entry
+
+        self._attr_unique_id = f"{entry.entry_id}_balance"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=SENSOR_NAME,
+            manufacturer="Splitwise",
+            entry_type=DeviceEntryType.SERVICE,
         )
-    except network.NoURLAvailableError:
-        _LOGGER.error(
-            "Unable to obtain Home Assistant URL via network.get_url. "
-            "Please configure an internal or external URL in Home Assistant settings."
-        )
-        raise ValueError("Unable to obtain HASS url via network.get_url")
-
-
-def setup(hass, config):
-    hass.helpers.discovery.load_platform("sensor", DOMAIN, {}, config)
-    return True
-
-
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    client_id = config[CONF_CLIENT_ID]
-    client_secret = config[CONF_CLIENT_SECRET]
-    add_entities([SplitwiseSensor(hass, client_id, client_secret)])
-
-
-class SplitwiseApi:
-    def __init__(self, sensor, client_id, client_secret):
-        self.sensor = sensor
-        self.secret = None
-        self.isAuthSuccess = False
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.redirect_uri = None
-
-        try:
-            self.splitwise = Splitwise(
-                consumer_key=client_id, consumer_secret=client_secret
-            )
-        except Exception as e:
-            raise Exception("Cannot initialize Splitwise Client: {}".format(e))
-
-    @property
-    def token_file_name(self):
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        return os.path.join(base_path, _TOKEN_FILE)
-
-    def get_access_token_from_file(self):
-        if not os.path.isfile(self.token_file_name):
-            self.get_credentials()
-            return
-
-        with open(self.token_file_name, "r") as token_file:
-            token_data = json.loads(token_file.read()) or {}
-
-        if "access_token" not in token_data:
-            code = token_data.get("code")
-            if code:
-                self.get_access_token(code)
-        else:
-            self.isAuthSuccess = True
-            self.splitwise.setOAuth2AccessToken(token_data)
-
-    @property
-    def is_authenticated(self):
-        return self.isAuthSuccess
-
-    def get_access_token(self, code):
-        with open(self.token_file_name, "r") as token_file:
-            token_data = json.loads(token_file.read()) or {}
-
-        access_token = token_data.get("access_token")
-        if not access_token:
-            try:
-                access_token = self.splitwise.getOAuth2AccessToken(
-                    code, self.get_redirect_uri()
-                )
-            except Exception as err:
-                raise AuthenticationFailedException(
-                    "Failed to exchange authorization code for an access token. "
-                    f"Check that {self.get_redirect_uri()} is registered as a "
-                    f"Redirect URI on the Splitwise Developer portal: {err}"
-                ) from err
-
-        with open(self.token_file_name, "w") as token_file:
-            token_file.write(json.dumps(access_token))
-
-        self.isAuthSuccess = True
-        self.splitwise.setOAuth2AccessToken(access_token)
-
-    def get_credentials(self):
-        url, state = self.splitwise.getOAuth2AuthorizeURL(self.get_redirect_uri())
-        self.sensor.create_oauth_view(url)
-
-    def get_redirect_uri(self):
-        return "{}{}".format(self.sensor.hass_url, AUTH_CALLBACK_PATH)
-
-
-class SplitwiseSensor(Entity):
-    def __init__(self, hass, client_id, client_secret):
-        self.hass = hass
-        self.hass_url = get_url(hass)
-        self.api = SplitwiseApi(self, client_id, client_secret)
 
         self._state = None
         self._user_id = None
@@ -163,22 +66,20 @@ class SplitwiseSensor(Entity):
         self._group_map = {}
         self._id_map = {}
 
-        self.api.get_access_token_from_file()
-
     @property
     def name(self):
         return "Splitwise Sensor"
 
     @property
     def icon(self):
-        return "mdi:cash"  # <<< This sets the icon
+        return "mdi:cash"
 
     @property
-    def state(self):
+    def native_value(self):
         return self._state
 
     @property
-    def unit_of_measurement(self):
+    def native_unit_of_measurement(self):
         return self.currency
 
     @property
@@ -202,18 +103,31 @@ class SplitwiseSensor(Entity):
 
         return m
 
-    def update(self):
-        self.api.get_access_token_from_file()
+    def _fetch_splitwise_data(self, token):
+        """Run on the executor: sync the token into the client and fetch data."""
+        client = self._runtime.client
+        client.setOAuth2AccessToken(token)
 
-        if not self.api.is_authenticated:
-            raise AuthenticationFailedException("error fetching authentication token")
+        user = client.getCurrentUser()
+        friends = client.getFriends()
+        groups = client.getGroups()
+        notifications = client.getNotifications()
 
-        persistent_notification.dismiss(
-            self.hass,
-            notification_id=f"splitwise_setup_{SENSOR_NAME}",
-        )
+        return user, friends, groups, notifications
 
-        user = self.api.splitwise.getCurrentUser()
+    async def async_update(self) -> None:
+        session = self._runtime.session
+
+        try:
+            await session.async_ensure_token_valid()
+            user, friends, groups, notifications = await self.hass.async_add_executor_job(
+                self._fetch_splitwise_data, session.token
+            )
+        except SplitwiseException as err:
+            raise ConfigEntryAuthFailed(
+                f"Splitwise authentication failed: {err}"
+            ) from err
+
         self._user_id = user.getId()
         self.currency = user.getDefaultCurrency()
 
@@ -222,9 +136,7 @@ class SplitwiseSensor(Entity):
 
         self._last_name = user.getLastName().title().lower()
 
-        friends = self.api.splitwise.getFriends()
         all_balance = 0.0
-
         for f in friends:
             name = f.getFirstName().title().lower()
             id = f.getId()
@@ -240,10 +152,15 @@ class SplitwiseSensor(Entity):
             all_balance += total_balance
 
         self._state = all_balance
-        self.get_group_data()
-        self.emit_notifications(self.api.splitwise.getNotifications())
+        self._update_group_data(groups)
+        self._emit_notifications(notifications)
 
-    def emit_notifications(self, notifications):
+        if self._entry.unique_id is None:
+            self.hass.config_entries.async_update_entry(
+                self._entry, unique_id=str(self._user_id)
+            )
+
+    def _emit_notifications(self, notifications):
         for n in notifications:
             self.hass.bus.fire(
                 "splitwise_notification_event_" + str(n.getType()),
@@ -264,9 +181,7 @@ class SplitwiseSensor(Entity):
                 origin="REMOTE",
             )
 
-    def get_group_data(self):
-        groups = self.api.splitwise.getGroups()
-
+    def _update_group_data(self, groups):
         for g in groups:
             amount = 0.0
             for d in g.getOriginalDebts():
@@ -276,67 +191,3 @@ class SplitwiseSensor(Entity):
                     amount += float(d.getAmount())
 
             self._group_map[g.getName()] = amount
-
-    def create_oauth_view(self, auth_url):
-        try:
-            self.hass.http.register_view(
-                SplitwiseAuthCallbackView(self, self.api.token_file_name)
-            )
-        except Exception as e:
-            _LOGGER.error("Splitwise CallbackView Error {}".format(e))
-            return
-
-        persistent_notification.create(
-            self.hass,
-            "In order to authorize Home-Assistant to view your Splitwise data, "
-            "you must visit: "
-            f'<a href="{auth_url}" target="_blank">{auth_url}</a>. Make '
-            f"sure that you have added {self.api.get_redirect_uri()} to your "
-            "Redirect URIs on Splitwise Developer portal.",
-            title=SENSOR_NAME,
-            notification_id=f"splitwise_setup_{SENSOR_NAME}",
-        )
-
-
-class SplitwiseAuthCallbackView(http.HomeAssistantView):
-    requires_auth = False
-    url = AUTH_CALLBACK_PATH
-    name = "api:splitwise:callback"
-
-    def __init__(self, sensor, token_file):
-        self.sensor = sensor
-        self.token_file_name = token_file
-
-    async def get(self, request):
-        hass = request.app["hass"]
-        params = request.query
-
-        error = params.get("error")
-        code = params.get("code")
-
-        if error or not code:
-            _LOGGER.error(
-                "Splitwise OAuth callback failed: %s",
-                error or "missing 'code' query parameter",
-            )
-            return self.json_message(
-                f"Splitwise authorization failed: {error or 'missing code parameter'}. "
-                "Please check the Home Assistant logs and try again.",
-                status_code=400,
-            )
-
-        code_data = {"code": code}
-        with open(self.token_file_name, "w+") as token_file:
-            token_file.write(json.dumps(code_data))
-
-        try:
-            await hass.async_add_executor_job(self.sensor.update)
-        except Exception as err:
-            _LOGGER.error("Splitwise OAuth callback failed to update sensor: %s", err)
-            return self.json_message(
-                "Splitwise authorization succeeded but fetching data failed. "
-                "Please check the Home Assistant logs.",
-                status_code=500,
-            )
-
-        return self.json_message("You can close this window now")

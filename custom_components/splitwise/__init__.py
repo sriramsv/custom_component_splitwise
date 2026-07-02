@@ -1,1 +1,77 @@
-""" Splitwise Sensor Custom Component"""
+"""Splitwise Sensor Custom Component"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_PLATFORM, Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
+from homeassistant.helpers.typing import ConfigType
+from splitwise import Splitwise
+
+from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+PLATFORMS = [Platform.SENSOR]
+
+
+@dataclass
+class SplitwiseRuntimeData:
+    """Runtime data bundled for the config entry."""
+
+    session: config_entry_oauth2_flow.OAuth2Session
+    client: Splitwise
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Splitwise component, warning about deprecated YAML config."""
+    for platform_conf in config.get("sensor", []):
+        if platform_conf.get(CONF_PLATFORM) == DOMAIN:
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                "deprecated_yaml",
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="deprecated_yaml",
+                learn_more_url="https://github.com/sriramsv/custom_component_splitwise#readme",
+            )
+            break
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Splitwise from a config entry."""
+    implementation = (
+        await config_entry_oauth2_flow.async_get_config_entry_implementation(
+            hass, entry
+        )
+    )
+    session = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
+
+    client = Splitwise(
+        consumer_key=implementation.client_id,
+        consumer_secret=implementation.client_secret,
+    )
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = SplitwiseRuntimeData(
+        session, client
+    )
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a Splitwise config entry."""
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unloaded

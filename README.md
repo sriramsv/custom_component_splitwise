@@ -23,16 +23,10 @@ This is a custom component integration for Splitwise API
 - Fill in the following sections
   - Application name: Homeassistant
   - Application Description: Homeassistant API Integration
-  - Homepage URL: `http://localhost:8123` 
-  - [Important] Callback URL: `http://localhost:8123/api/splitwise/callback` 
+  - Homepage URL: `https://www.home-assistant.io/`
+  - [Important] Callback URL: `https://my.home-assistant.io/redirect/oauth`
 
-#### Note: 
-
-If you are using a reverse proxy or **Nabu Casa** in front of your home assistant server, use your public address as the callback URL in the application settings, e.g.:
-- Reverse proxy: `https://home.<your-domain>.com/api/splitwise/callback`
-- Nabu Casa: `https://<your-instance>.ui.nabu.casa/api/splitwise/callback`
-
-The component automatically prefers your Home Assistant instance's **external URL** (configured under `Settings > System > Network`) when building this callback, so it must match exactly what you register here. If it doesn't match, the OAuth callback will fail or return an error. If you only have a local/internal URL configured, that will be used instead.
+This callback URL is fixed and works regardless of your network setup (local, reverse proxy, or Nabu Casa) — Home Assistant's own redirect service (`my.home-assistant.io`) forwards the OAuth callback to your instance automatically, so there's no need to figure out your own public address.
 
 ![edit-app](images/edit-app.png)
 - Click on `Register and get API key`
@@ -46,28 +40,16 @@ The component automatically prefers your Home Assistant instance's **external UR
 
 ### Manual
 - Copy the contents of the folder `custom_components/splitwise` into `<hass-config-directory>/custom_components/splitwise`
-
-- Add the following lines to the `configuration.yaml` 
-
+- Restart Homeassistant
 
 ## Configuration
-```yaml
-sensor:
-  - platform: splitwise
-    client_id: '<consumer-id>'
-    client_secret: '<consumer-secret>'
-```
 
-- Restart Homeassistant 
-- Once you login to Homeassistant again, you should see a persistent notification with an authorization URL link in it: 
+As of version 0.2.0, this integration is configured entirely through the Home Assistant UI — there is no more YAML configuration. If you have an existing `sensor: - platform: splitwise` block in `configuration.yaml`, remove it (Home Assistant will show a repair notice reminding you), and you can delete the old `splitwise.conf` token file from your config directory — it's no longer used.
 
-
- ![auth-url](images/auth-url.png)
-
- - You will be redirected to the Oauth confirmation page from Splitwise to authorize Homeassistant to pull the data on your behalf. 
-
- ![oauth-confirm](images/oauth.png)
-- Once you accept the Splitwise Oauth Callback, then sensor pulls the data from Splitwise API
+1. Go to **Settings > Devices & Services > Application Credentials** and add a credential for **Splitwise**, using the Consumer Key/Secret from the app you registered above.
+2. Go to **Settings > Devices & Services > Add Integration**, search for **Splitwise**, and follow the prompts.
+3. You'll be redirected to Splitwise to authorize Home Assistant, then redirected back automatically once you approve.
+4. The sensor will populate with your balance and per-friend/per-group attributes shortly after.
 
 ## Final Output
 ![dash-url](images/dash.png)

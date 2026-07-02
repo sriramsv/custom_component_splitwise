@@ -2,9 +2,10 @@
     "domain": "splitwise",
     "name": "Splitwise",
     "documentation": "https://github.com/sriramsv/custom_component_splitwise",
-    "dependencies": [],
+    "dependencies": ["application_credentials"],
     "codeowners": ["sriramsv"],
     "requirements": ["splitwise==3.0.0"],
     "iot_class": "cloud_polling",
-    "version": "0.1.3"
+    "config_flow": true,
+    "version": "0.2.0"
   }

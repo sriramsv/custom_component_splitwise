@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "pick_implementation": {
+        "title": "Pick Authentication Method"
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Splitwise",
+        "description": "The Splitwise integration needs to re-authenticate your account."
+      }
+    },
+    "abort": {
+      "already_configured": "Account is already configured",
+      "already_in_progress": "Configuration flow is already in progress",
+      "oauth_error": "Received invalid token data",
+      "oauth_timeout": "Timeout resolving OAuth token",
+      "oauth_unauthorized": "OAuth authorization error while obtaining access token",
+      "oauth_failed": "Error while obtaining access token",
+      "reauth_successful": "Re-authentication was successful",
+      "missing_configuration": "The Splitwise integration is not configured. Please follow the documentation to set up Application Credentials.",
+      "authorize_url_timeout": "Timeout generating authorize URL"
+    },
+    "create_entry": {
+      "default": "Successfully authenticated with Splitwise"
+    }
+  },
+  "application_credentials": {
+    "description": "To link your Splitwise account, register an application at the [Splitwise Developer portal](https://secure.splitwise.com/apps). Set the Callback URL to `https://my.home-assistant.io/redirect/oauth`, then enter the Client ID and Client Secret it gives you below."
+  },
+  "issues": {
+    "deprecated_yaml": {
+      "title": "Splitwise YAML configuration is deprecated",
+      "description": "Splitwise no longer supports YAML sensor configuration. Remove the `sensor: - platform: splitwise` block from configuration.yaml and delete any leftover `splitwise.conf` token file, then set up Splitwise via Settings > Devices & Services > Add Integration."
+    }
+  }
+}
