@@ -8,5 +8,5 @@
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/sriramsv/custom_component_splitwise/issues",
     "requirements": ["splitwise==3.0.0"],
-    "version": "0.2.9"
+    "version": "0.2.10"
   }
