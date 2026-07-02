@@ -1,7 +1,5 @@
 {
     "name": "Splitwise Sensor",
-    "domains": ["sensor"],
-    "country": ["US"],
-    "version": "0.2.7",
+    "country": "US",
     "render_readme": true
   }

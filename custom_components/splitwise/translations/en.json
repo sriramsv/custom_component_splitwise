@@ -25,7 +25,7 @@
     }
   },
   "application_credentials": {
-    "description": "To link your Splitwise account, register an application at the [Splitwise Developer portal](https://secure.splitwise.com/apps). Set the Callback URL to `https://my.home-assistant.io/redirect/oauth`. Splitwise will give you a **Consumer Key** and **Consumer Secret** — enter the Consumer Key in the Client ID field below, and the Consumer Secret in the Client Secret field."
+    "description": "To link your Splitwise account, register an application in the Splitwise Developer portal (see the integration documentation for the exact Callback URL to use). Splitwise will give you a Consumer Key and a Consumer Secret: enter the Consumer Key in the Client ID field below, and the Consumer Secret in the Client Secret field."
   },
   "issues": {
     "deprecated_yaml": {
