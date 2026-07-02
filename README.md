@@ -49,7 +49,7 @@ As of version 0.2.0, this integration is configured entirely through the Home As
 1. Go to **Settings > Devices & Services > Application Credentials** and add a credential for **Splitwise**, using the Consumer Key/Secret from the app you registered above.
 2. Go to **Settings > Devices & Services > Add Integration**, search for **Splitwise**, and follow the prompts.
 3. You'll be redirected to Splitwise to authorize Home Assistant, then redirected back automatically once you approve.
-4. The sensor will populate with your balance and per-friend/per-group attributes shortly after.
+4. Two sensors will populate shortly after: **Splitwise You Owe** and **Splitwise You Are Owed**, each with per-friend/per-group breakdown attributes for that side of the balance.
 
 ## Final Output
 ![dash-url](images/dash.png)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
@@ -14,20 +13,13 @@ from homeassistant.helpers.typing import ConfigType
 from splitwise import Splitwise
 
 from .const import DOMAIN
+from .coordinator import SplitwiseDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = [Platform.SENSOR]
-
-
-@dataclass
-class SplitwiseRuntimeData:
-    """Runtime data bundled for the config entry."""
-
-    session: config_entry_oauth2_flow.OAuth2Session
-    client: Splitwise
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -62,9 +54,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         consumer_secret=implementation.client_secret,
     )
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = SplitwiseRuntimeData(
-        session, client
-    )
+    coordinator = SplitwiseDataUpdateCoordinator(hass, entry, session, client)
+    await coordinator.async_config_entry_first_refresh()
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
