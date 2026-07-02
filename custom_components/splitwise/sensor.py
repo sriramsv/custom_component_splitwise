@@ -33,6 +33,14 @@ def format_name(str):
     )
 
 
+def _sum_by_currency(amounts):
+    """Sum a list of (currency_code, amount) pairs, keyed by currency."""
+    totals: dict[str, float] = {}
+    for currency_code, amount in amounts:
+        totals[currency_code] = totals.get(currency_code, 0.0) + amount
+    return totals
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -97,9 +105,25 @@ class SplitwiseSensor(SensorEntity):
             if v["total_balance"] != 0.0:
                 m[format_name(k)] = v["total_balance"]
 
+            other_currencies = {
+                currency_code: amount
+                for currency_code, amount in v["balances_by_currency"].items()
+                if currency_code != self.currency and amount != 0.0
+            }
+            if other_currencies:
+                m[f"{format_name(k)}_other_currencies"] = other_currencies
+
         for k, v in self._group_map.items():
-            if v != 0.0:
-                m[format_name(k)] = v
+            if v["total_balance"] != 0.0:
+                m[format_name(k)] = v["total_balance"]
+
+            other_currencies = {
+                currency_code: amount
+                for currency_code, amount in v["balances_by_currency"].items()
+                if currency_code != self.currency and amount != 0.0
+            }
+            if other_currencies:
+                m[f"{format_name(k)}_other_currencies"] = other_currencies
 
         return m
 
@@ -149,10 +173,14 @@ class SplitwiseSensor(SensorEntity):
             name = f.getFirstName().title().lower()
             id = f.getId()
 
-            total_balance = sum(float(b.getAmount()) for b in f.getBalances())
+            balances_by_currency = _sum_by_currency(
+                (b.getCurrencyCode(), float(b.getAmount())) for b in f.getBalances()
+            )
+            total_balance = balances_by_currency.get(self.currency, 0.0)
 
             self._friends_list[name] = {
                 "total_balance": total_balance,
+                "balances_by_currency": balances_by_currency,
                 "id": id,
             }
 
@@ -191,11 +219,20 @@ class SplitwiseSensor(SensorEntity):
 
     def _update_group_data(self, groups):
         for g in groups:
-            amount = 0.0
+            amounts_by_currency = []
             for d in g.getOriginalDebts():
-                if self._id_map[d.getToUser()] == self._first_name:
-                    amount -= float(d.getAmount())
-                elif self._id_map[d.getFromUser()] == self._first_name:
-                    amount += float(d.getAmount())
+                # currency_code is optional on Debt; treat missing as the
+                # account's default currency rather than dropping it.
+                currency_code = d.getCurrencyCode() or self.currency
 
-            self._group_map[g.getName()] = amount
+                if self._id_map[d.getToUser()] == self._first_name:
+                    amounts_by_currency.append((currency_code, -float(d.getAmount())))
+                elif self._id_map[d.getFromUser()] == self._first_name:
+                    amounts_by_currency.append((currency_code, float(d.getAmount())))
+
+            balances_by_currency = _sum_by_currency(amounts_by_currency)
+
+            self._group_map[g.getName()] = {
+                "total_balance": balances_by_currency.get(self.currency, 0.0),
+                "balances_by_currency": balances_by_currency,
+            }
