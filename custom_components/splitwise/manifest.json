@@ -1,12 +1,12 @@
 {
     "domain": "splitwise",
     "name": "Splitwise",
-    "documentation": "https://github.com/sriramsv/custom_component_splitwise",
-    "issue_tracker": "https://github.com/sriramsv/custom_component_splitwise/issues",
-    "dependencies": ["application_credentials"],
     "codeowners": ["@sriramsv"],
-    "requirements": ["splitwise==3.0.0"],
-    "iot_class": "cloud_polling",
     "config_flow": true,
-    "version": "0.2.8"
+    "dependencies": ["application_credentials"],
+    "documentation": "https://github.com/sriramsv/custom_component_splitwise",
+    "iot_class": "cloud_polling",
+    "issue_tracker": "https://github.com/sriramsv/custom_component_splitwise/issues",
+    "requirements": ["splitwise==3.0.0"],
+    "version": "0.2.9"
   }
