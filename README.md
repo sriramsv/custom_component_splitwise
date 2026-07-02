@@ -28,7 +28,11 @@ This is a custom component integration for Splitwise API
 
 #### Note: 
 
-If you are using a reverse proxy in front of your home assistant server, use the public address (`https://home.<your-domain>.com>/api/splitwise/callback`) as the callback URL in the application settings. Otherwise the oauth authentication won't work
+If you are using a reverse proxy or **Nabu Casa** in front of your home assistant server, use your public address as the callback URL in the application settings, e.g.:
+- Reverse proxy: `https://home.<your-domain>.com/api/splitwise/callback`
+- Nabu Casa: `https://<your-instance>.ui.nabu.casa/api/splitwise/callback`
+
+The component automatically prefers your Home Assistant instance's **external URL** (configured under `Settings > System > Network`) when building this callback, so it must match exactly what you register here. If it doesn't match, the OAuth callback will fail or return an error. If you only have a local/internal URL configured, that will be used instead.
 
 ![edit-app](images/edit-app.png)
 - Click on `Register and get API key`
