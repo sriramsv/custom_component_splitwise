@@ -2,6 +2,10 @@
 
 <img src="images/icon.png" alt="Splitwise" width="96" height="96">
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/sriramsv/custom_component_splitwise)](https://github.com/sriramsv/custom_component_splitwise/releases)
+[![GitHub all releases](https://img.shields.io/github/downloads/sriramsv/custom_component_splitwise/total)](https://github.com/sriramsv/custom_component_splitwise/releases)
+
 This is a custom component integration for Splitwise API
 
 
@@ -38,10 +42,12 @@ This callback URL is fixed and works regardless of your network setup (local, re
 ## Installation
 
 ### HACS:
-- Search for `Splitwise Sensor` in HACS console and install it.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=sriramsv&repository=custom_component_splitwise&category=integration)
+
+- Click the badge above (or search for `Splitwise Sensor` in the HACS console) to add this repository and install it.
 
 ### Manual
-- Copy the contents of the folder `custom_components/splitwise` into `<hass-config-directory>/custom_components/splitwise`
+- Download the [latest release](https://github.com/sriramsv/custom_component_splitwise/releases/latest) and copy the contents of the folder `custom_components/splitwise` into `<hass-config-directory>/custom_components/splitwise`
 - Restart Homeassistant
 
 ## Configuration
